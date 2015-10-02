@@ -57,8 +57,9 @@ void runExperiment()
   // get camera calibration in form of an undistorter object.
   // if no undistortion is required, the undistorter will just pass images through.
   std::string dataset_dir = ros::package::getPath("rpg_datasets");
-  std::string dataset_name;
+  std::string dataset_name, trace_dir;
   ros::param::get("~dataset_name", dataset_name);
+  ros::param::get("~trace_dir", trace_dir);
   std::string calib_file = dataset_dir + "/" + dataset_name + "/lsd_calib.txt";
   Undistorter* undistorter = Undistorter::getUndistorterForFile(calib_file.c_str());
   CHECK_NOTNULL(undistorter);
@@ -93,11 +94,10 @@ void runExperiment()
   }
 
   cv::Mat image = cv::Mat(h,w,CV_8U);
-  int runningIDX=0;
-  float fakeTimeStamp = 0;
   int first_frame_id, last_frame_id;
   ros::param::get("~dataset_first_frame", first_frame_id);
   ros::param::get("~dataset_last_frame", last_frame_id);
+  bool is_initialized = false;
   while(img_fs.good() && !img_fs.eof() && ros::ok())
   {
     if(img_fs.peek() == '#') // skip comments
@@ -128,56 +128,47 @@ void runExperiment()
 
     //--------------------------------------------------------------------------
     // Track pose
-
     undistorter->undistort(imageDist, image);
     CHECK(image.type() == CV_8U) << "Image not 8uC1";
-
-    std::cout << "process frame " << img_id << std::endl;
-    if(runningIDX == 0)
-      system->randomInit(image.data, fakeTimeStamp, runningIDX);
-    else
-      system->trackFrame(image.data, runningIDX, block_until_finished_processing, fakeTimeStamp);
-
-    runningIDX++;
-    fakeTimeStamp+=0.03;
-
-    //--------------------------------------------------------------------------
-    // Trace estimated pose
-
-    /*
-    if(svo_->stage() == Stage::kTracking)
+    if(!is_initialized)
     {
-      const Transformation T_w_b = svo_->getLastFrames()->get_T_W_B();
-      const Eigen::Quaterniond& q = T_w_b.getRotation().toImplementation();
-      const Vector3d& p = T_w_b.getPosition();
-      trace_est_pose_ << img_id << " "
-                      << p.x() << " " << p.y() << " " << p.z() << " "
-                      << q.x() << " " << q.y() << " " << q.z() << " " << q.w()
-                      << std::endl;
+      std::cout << "Initialize tracker with frame " << img_id << std::endl;
+      system->randomInit(image.data, stamp_seconds, img_id);
+      is_initialized = true;
     }
-    */
+    else
+    {
+      std::cout << "process frame " << img_id << std::endl;
+      system->trackFrame(image.data, img_id, block_until_finished_processing, stamp_seconds);
+    }
   }
 
   // ---------------------------------------------------------------------------
   // Trace poses to file
-  // TODO(cfo): Somehow this just returns 0;
-  /*
+  std::string trace_pose_filename = trace_dir + "/traj_estimate.txt";
+  std::ofstream trace_pose(trace_pose_filename);
+  CHECK(!trace_pose.fail());
   const std::vector<FramePoseStruct*, Eigen::aligned_allocator<lsd_slam::FramePoseStruct*> > poses =
       system->getAllPoses();
+  std::cout << "Saving " << poses.size() << " poses..." << std::endl;
   for(size_t i = 0; i < poses.size(); ++i)
   {
-    FramePoseStruct* pose = poses.at(0);
-    int id = pose->frameID;
-    Sim3 T_wc = pose->getCamToWorld();
-    std::cout << "--" << id << std::endl;
-    std::cout << T_wc.translation().transpose() << std::endl;
+    FramePoseStruct* pose = poses.at(i);
+    const int img_id = pose->frameID;
+    const Sim3 T_wc = pose->getCamToWorld();
+    const Eigen::Quaterniond& q = T_wc.quaternion();
+    const Eigen::Vector3d& p = T_wc.translation();
+    trace_pose << img_id << " "
+               << p.x() << " " << p.y() << " " << p.z() << " "
+               << q.x() << " " << q.y() << " " << q.z() << " " << q.w()
+               << std::endl;
   }
-  */
+  std::cout << "...done." << std::endl;
 
   // ---------------------------------------------------------------------------
   // Finish
   std::cout << "Finished processing." << std::endl;
-  system->finalize();
+  //system->finalize(); TODO: This is always blocking!
   delete system;
   delete undistorter;
   delete outputWrapper;
