@@ -16,6 +16,8 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rosbag
   cmake_modules
+  glog_catkin
+  gflags_catkin
 )
 
 find_package(Eigen3 REQUIRED)
@@ -109,6 +111,10 @@ target_link_libraries(live_slam lsdslam ${catkin_LIBRARIES} ${G2O_LIBRARIES})
 # build image node
 add_executable(dataset src/main_on_images.cpp)
 target_link_libraries(dataset lsdslam ${catkin_LIBRARIES} ${G2O_LIBRARIES})
+
+add_executable(lsd_benchmark src/main_benchmark.cpp)
+target_link_libraries(lsd_benchmark lsdslam ${catkin_LIBRARIES} ${G2O_LIBRARIES})
+
 
 # TODO add INSTALL
 
