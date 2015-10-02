@@ -18,8 +18,9 @@ find_package(catkin REQUIRED COMPONENTS
   cmake_modules
 )
 
-find_package(Eigen REQUIRED)
+find_package(Eigen3 REQUIRED)
 find_package(X11 REQUIRED)
+include(cmake/FindEigen3.cmake)
 include(cmake/FindG2O.cmake)
 include(cmake/FindSuiteParse.cmake)
 

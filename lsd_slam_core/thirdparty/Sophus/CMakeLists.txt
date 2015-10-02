@@ -2,7 +2,7 @@ SET(PROJECT_NAME Sophus)
 
 PROJECT(${PROJECT_NAME})
 CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
-
+SET(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${PROJECT_SOURCE_DIR}/CMakeModules/")
 SET (CMAKE_VERBOSE_MAKEFILE ON)
 
 # Release by default
@@ -31,14 +31,13 @@ set( Sophus_INCLUDE_DIR ${PROJECT_SOURCE_DIR} )
 
 ################################################################################
 
-include(FindEigen3.cmake)
-#find_package( Eigen3 REQUIRED )
+find_package( Eigen3 REQUIRED )
 INCLUDE_DIRECTORIES( ${EIGEN3_INCLUDE_DIR} )
 SET( Sophus_INCLUDE_DIR ${Sophus_INCLUDE_DIR} ${EIGEN3_INCLUDE_DIR} )
 
-SET (SOURCE_DIR "sophus")
+SET( SOURCE_DIR "sophus")
 
-SET (TEMPLATES tests
+SET( TEMPLATES tests
                so2
                se2
                so3
@@ -47,7 +46,7 @@ SET (TEMPLATES tests
                sim3
 )
 
-SET (SOURCES ${SOURCE_DIR}/sophus.hpp)
+SET( SOURCES ${SOURCE_DIR}/sophus.hpp )
 
 FOREACH(templ ${TEMPLATES})
   LIST(APPEND SOURCES ${SOURCE_DIR}/${templ}.hpp)
